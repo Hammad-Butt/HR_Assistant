@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>HR Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&display=swap" rel="stylesheet">
+<style>
+/* ===== Tokens: pure black canvas, system green + red (iOS dark palette) ===== */
+:root{
+  --bg:#000;--bg1:#1c1c1e;--bg2:#2c2c2e;--bg3:#48484a;--sep:rgba(84,84,88,.6);
+  --tx:#fff;--tx2:rgba(235,235,245,.64);
+  --green:#30d158;--green2:#2bbd4e;--gsoft:rgba(48,209,88,.16);--red:#ff453a;--rsoft:rgba(255,69,58,.13);
+  --ease:cubic-bezier(.32,.72,0,1);--spring:cubic-bezier(.34,1.56,.64,1);
+  --f:"Geist","SF Pro Text",-apple-system,"Segoe UI",sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%;height:100%;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);background:#000}
+body{font:16px/1.45 var(--f);letter-spacing:-.011em;color:var(--tx);background:var(--bg);height:100%;display:flex;flex-direction:column;overflow:hidden;-webkit-font-smoothing:antialiased}
+button,input,textarea{font:inherit;letter-spacing:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0;-webkit-tap-highlight-color:transparent}
+svg{display:block;flex-shrink:0}
+:focus-visible{outline:2px solid var(--green);outline-offset:2px;border-radius:10px}
+.press{transition:transform .35s var(--spring),opacity .15s,background .2s,color .2s}
+.press:active{transform:scale(.95);opacity:.8;transition-duration:.08s}
+.wrap{max-width:760px;margin:0 auto;padding-inline:max(16px,env(safe-area-inset-left))}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* ===== Boot ===== */
+#boot{position:fixed;inset:0;z-index:99;display:grid;place-content:center;justify-items:center;gap:14px;background:#000;transition:opacity .6s var(--ease),visibility .6s}
+#boot.off{opacity:0;visibility:hidden}
+.logo{width:88px;height:88px;border-radius:22%;background:linear-gradient(150deg,#5ae67d,#1fb446);color:#000;display:grid;place-items:center;font:700 32px var(--f);letter-spacing:-.04em;box-shadow:0 20px 60px rgba(48,209,88,.3),inset 0 1px 0 rgba(255,255,255,.4);animation:breathe 2s var(--ease) infinite}
+@keyframes breathe{50%{transform:scale(1.06)}}
+#boot h2{font:600 22px var(--f);letter-spacing:-.025em}
+.bar{width:90px;height:3px;border-radius:9px;background:var(--bg2);overflow:hidden}
+.bar::after{content:"";display:block;height:100%;width:40%;background:var(--green);border-radius:9px;animation:slide 1s var(--ease) infinite}
+@keyframes slide{from{transform:translateX(-100%)}to{transform:translateX(300%)}}
+
+/* ===== Navigation bar (translucent material) ===== */
+.top{flex-shrink:0;z-index:10;background:rgba(0,0,0,.72);backdrop-filter:saturate(180%) blur(24px);-webkit-backdrop-filter:saturate(180%) blur(24px);border-bottom:.5px solid var(--sep)}
+.bar3{display:grid;grid-template-columns:96px 1fr 96px;align-items:center;padding-block:6px}
+.ttl{text-align:center;min-width:0;overflow:hidden}.hl{display:flex}.hr2{display:flex;justify-content:flex-end}
+.ttl h1{display:flex;justify-content:center;align-items:center;gap:7px;font:600 17px/1.2 var(--f);letter-spacing:-.022em;white-space:nowrap}.ttl h1 span{overflow:hidden;text-overflow:ellipsis}#hLogo{width:22px;height:22px;object-fit:contain;border-radius:6px;flex-shrink:0}
+.status{display:flex;justify-content:center;align-items:center;gap:6px;font-size:12px;color:var(--tx2);white-space:nowrap;min-width:0}.status span:last-child{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.dot{flex:0 0 6px;width:6px;height:6px;border-radius:50%;background:var(--green)}.dot.empty{background:var(--red)}
+.ib{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:var(--green)}
+.ib:hover{background:var(--bg1)}
+
+/* ===== Chat ===== */
+#chat{flex:1;overflow-y:auto;overscroll-behavior:contain;scroll-behavior:smooth;padding-block:20px 8px}
+#feed{display:flex;flex-direction:column;gap:10px}
+@keyframes rise{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}
+.welcome{display:flex;flex-direction:column;align-items:center;text-align:center;padding:clamp(12px,7vh,64px) 0 8px;animation:rise .7s var(--ease)}
+.welcome .mark{width:84px;height:84px;border-radius:22%;background:linear-gradient(150deg,#5ae67d,#1fb446);color:#000;display:grid;place-items:center;font:700 30px var(--f);letter-spacing:-.04em;margin-bottom:22px;box-shadow:0 18px 50px rgba(48,209,88,.28),inset 0 1px 0 rgba(255,255,255,.4)}
+.welcome h2{font:700 clamp(30px,6vw,40px)/1.08 var(--f);letter-spacing:-.035em;margin-bottom:10px}
+.welcome p{color:var(--tx2);max-width:380px;font-size:16px}
+.chip{margin-top:20px;padding:7px 14px;border-radius:99px;font-size:13px;color:var(--tx2);background:var(--bg1)}
+.chip b{color:var(--green);font-weight:600}.chip.warn{color:var(--red);background:var(--rsoft)}
+.sug{margin-top:32px;width:100%;max-width:460px;text-align:left}
+.sug small{display:block;font:500 13px var(--f);text-transform:uppercase;letter-spacing:.02em;color:var(--tx2);padding:0 16px 8px}
+.grp{background:var(--bg1);border-radius:14px;overflow:hidden}
+.sg{display:flex;align-items:center;gap:12px;padding:14px 16px;width:100%;font-size:16px;text-align:left;position:relative}
+.sg+.sg::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:.5px solid var(--sep)}
+.sg:hover{background:var(--bg2)}.sg:active{background:var(--bg2);transform:none;opacity:1}
+.sg svg{margin-left:auto;color:var(--tx2)}
+
+.msg{display:flex;gap:8px;align-items:flex-end;animation:rise .5s var(--ease)}
+.msg.user{justify-content:flex-end}
+.av{width:30px;height:30px;border-radius:50%;background:var(--green);color:#000;display:grid;place-items:center;font:700 11px var(--f);flex-shrink:0;align-self:flex-start;margin-top:2px}
+.bub{padding:10px 15px;border-radius:20px;max-width:min(84%,600px);overflow-wrap:anywhere;font-size:16px;line-height:1.4}
+.user .bub{background:var(--green);color:#000;font-weight:500;border-bottom-right-radius:6px;white-space:pre-wrap}
+.bot .bub{background:var(--bg1);border-bottom-left-radius:6px;min-width:0}
+.bub.plain{white-space:pre-wrap}
+.card{display:grid;gap:4px;padding:2px 0}
+.ch{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ct{font:600 18px/1.25 var(--f);letter-spacing:-.025em}
+.cp{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:var(--tx2);margin-right:-6px}.cp:hover{color:var(--green);background:var(--bg2)}
+.al{list-style:none}
+.al li{position:relative;padding:9px 0 9px 18px;font-size:15.5px;border-top:.5px solid var(--sep)}
+.al li:first-child{border-top:0}
+.al li::before{content:"";position:absolute;left:2px;top:1.05em;width:7px;height:7px;border-radius:50%;background:var(--green)}
+mark{background:var(--gsoft);color:var(--green);padding:0 3px;border-radius:5px;font-weight:600}
+.src{border-top:.5px solid var(--sep);margin-top:2px}
+.src summary{cursor:pointer;list-style:none;font-size:13.5px;color:var(--tx2);display:flex;gap:8px;align-items:center;padding:10px 0 4px}
+.src summary::-webkit-details-marker{display:none}
+.src summary::before{content:"›";font-size:18px;line-height:1;transition:transform .4s var(--spring)}
+.src[open] summary::before{transform:rotate(90deg)}.src summary:hover{color:var(--tx)}
+.sb{margin-top:8px;padding:12px;background:var(--bg);border-radius:12px;font-size:13.5px;color:var(--tx2);white-space:pre-wrap;max-height:240px;overflow:auto}
+.refuse .bub{background:var(--rsoft);box-shadow:inset 0 0 0 .5px rgba(255,69,58,.45)}
+.rh{display:flex;gap:7px;align-items:center;font:600 12px var(--f);text-transform:uppercase;letter-spacing:.06em;color:var(--red);margin-bottom:4px}
+.rt{margin-top:6px;font-size:13.5px;color:var(--tx2)}
+.tb{display:inline-flex;gap:5px;padding:15px 16px;background:var(--bg1);border-radius:20px;border-bottom-left-radius:6px}
+.tb i{width:8px;height:8px;border-radius:50%;background:var(--tx2);animation:bn 1.3s infinite ease-in-out}
+.tb i:nth-child(2){animation-delay:.16s}.tb i:nth-child(3){animation-delay:.32s}
+@keyframes bn{0%,60%,100%{transform:none;opacity:.35}30%{transform:translateY(-4px);opacity:1}}
+
+/* ===== Composer ===== */
+.comp{flex-shrink:0;padding-block:8px 10px;background:rgba(0,0,0,.72);backdrop-filter:saturate(180%) blur(24px);-webkit-backdrop-filter:saturate(180%) blur(24px);border-top:.5px solid var(--sep)}
+.cb{display:flex;align-items:flex-end;gap:6px;padding:4px 4px 4px 16px;background:var(--bg1);border-radius:24px;box-shadow:inset 0 0 0 .5px var(--sep);transition:box-shadow .3s var(--ease)}
+.cb:focus-within{box-shadow:inset 0 0 0 1.5px var(--green)}
+#in{flex:1;border:0;background:none;resize:none;outline:0;padding:9px 0;font-size:16px;line-height:1.4;max-height:120px}
+#in::placeholder{color:rgba(235,235,245,.5)}
+#go{width:38px;height:38px;border-radius:50%;background:var(--green);color:#000;display:grid;place-items:center;flex-shrink:0}
+#go svg{stroke-width:2.8}
+#go:disabled{background:var(--bg3);color:var(--tx2);cursor:not-allowed}
+#go.load svg{display:none}#go.load::after{content:"";width:17px;height:17px;border:2.5px solid rgba(0,0,0,.25);border-top-color:#000;border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* ===== Sheet (settings) ===== */
+#scrim,#mscrim{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .4s var(--ease);z-index:40}
+#scrim.on,#mscrim.on{opacity:1;pointer-events:auto}
+#mscrim{z-index:60;display:grid;place-items:center;padding:20px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+#panel{position:fixed;z-index:50;background:var(--bg1);display:flex;flex-direction:column;visibility:hidden;transition:transform .55s var(--ease),opacity .3s,visibility 0s .55s;box-shadow:0 -10px 60px rgba(0,0,0,.6)}
+#panel.on{visibility:visible;transition-delay:0s}
+@media(max-width:699px){
+  #panel{left:0;right:0;bottom:0;height:min(92dvh,760px);border-radius:20px 20px 0 0;transform:translateY(104%)}
+  #panel.on{transform:none}
+  .ph{touch-action:none;cursor:grab}
+  .ph::before{content:"";position:absolute;top:6px;left:50%;width:36px;height:5px;margin-left:-18px;border-radius:9px;background:var(--bg3)}
+}
+@media(min-width:700px){
+  #panel{top:50%;left:50%;width:520px;height:min(700px,86dvh);margin:0;border-radius:22px;transform:translate(-50%,-47%) scale(.95);opacity:0}
+  #panel.on{transform:translate(-50%,-50%);opacity:1}
+}
+.ph{position:relative;display:grid;grid-template-columns:70px 1fr 70px;align-items:center;padding:18px 12px 8px}
+.ph h2{font:600 17px var(--f);text-align:center;letter-spacing:-.022em}
+.done{justify-self:end;padding:8px 10px;font-weight:600;color:var(--green);border-radius:10px}
+.tabs{position:relative;display:flex;margin:8px 16px 4px;padding:2px;background:rgba(118,118,128,.24);border-radius:9px}
+.tabs::before{content:"";position:absolute;top:2px;bottom:2px;left:2px;width:calc((100% - 4px)/4);background:var(--bg3);border-radius:7px;box-shadow:0 3px 8px rgba(0,0,0,.35);transition:transform .5s var(--spring)}
+.tabs[data-i="1"]::before{transform:translateX(100%)}.tabs[data-i="2"]::before{transform:translateX(200%)}.tabs[data-i="3"]::before{transform:translateX(300%)}
+.tab{position:relative;flex:1;padding:7px 4px;font-size:13.5px;font-weight:500;color:var(--tx2);text-align:center;border-radius:7px;min-height:32px}
+.tab.on{color:var(--tx);font-weight:600}
+.pb{flex:1;overflow-y:auto;padding:18px 16px calc(24px + env(safe-area-inset-bottom,0px))}
+.pb [hidden]{display:none!important}
+.sec{margin-bottom:26px}
+.st{display:flex;gap:7px;align-items:center;font:500 13px var(--f);text-transform:uppercase;letter-spacing:.02em;color:var(--tx2);margin:0 16px 8px}
+.fld{margin-bottom:12px}.fld label{display:block;font-size:13px;font-weight:500;color:var(--tx2);margin:0 4px 6px}
+.fld input{width:100%;padding:13px 14px;font-size:16px;background:var(--bg2);border:0;border-radius:12px;outline:0;box-shadow:inset 0 0 0 0 var(--green);transition:box-shadow .25s var(--ease)}
+.fld input:focus{box-shadow:inset 0 0 0 1.5px var(--green)}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:14px 16px;font-size:16px;font-weight:600;border-radius:14px;width:100%;background:var(--bg2);color:var(--green)}
+.btn:hover{background:var(--bg3)}
+.btn.primary{background:var(--green);color:#000}.btn.primary:hover{background:var(--green2)}
+.btn.danger{color:var(--red)}
+.hint{font-size:13.5px;color:var(--tx2);line-height:1.55;margin:8px 4px 0}
+.pin{padding:28px 20px 22px;background:var(--bg2);border-radius:18px;text-align:center}
+.pin>span{display:grid;place-items:center;width:56px;height:56px;margin:0 auto 14px;border-radius:50%;background:var(--gsoft);color:var(--green)}
+.pin h3{font:600 20px var(--f);letter-spacing:-.025em;margin-bottom:4px}.pin p{font-size:14px;color:var(--tx2);margin-bottom:18px}
+.pin input{background:var(--bg);text-align:center;letter-spacing:.4em}
+.pe{color:var(--red);font-size:13px;min-height:18px;margin-top:8px}
+.dz{padding:30px 16px;border:1.5px dashed rgba(48,209,88,.5);border-radius:14px;background:var(--gsoft);text-align:center;cursor:pointer;margin-bottom:10px;transition:transform .4s var(--spring),background .2s}
+.dz:hover,.dz.drag{background:rgba(48,209,88,.24);transform:scale(1.015)}
+.dz svg{margin:0 auto 10px;color:var(--green)}.dz b{display:block;font-weight:600}.dz span{font-size:13px;color:var(--tx2)}
+.up{padding:11px 14px;background:var(--bg2);border-radius:12px;font-size:13.5px;margin-bottom:8px}
+.up .n{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.up .s{font-size:12.5px;color:var(--tx2)}
+.up.done .s{color:var(--green)}.up.error .s{color:var(--red)}
+#docs{background:var(--bg2);border-radius:14px;overflow:hidden}
+.doc{display:flex;align-items:center;gap:12px;padding:10px 6px 10px 14px;border-top:.5px solid var(--sep)}
+.doc:first-child{border-top:0}
+.di{width:36px;height:36px;border-radius:9px;background:var(--green);color:#000;display:grid;place-items:center;font:700 10px var(--f);text-transform:uppercase;flex-shrink:0}
+.db{flex:1;min-width:0}.dn{font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dm{font-size:12.5px;color:var(--tx2)}
+.doc .ib{width:40px;height:40px}.doc .ib.del{color:var(--red)}
+.empty{text-align:center;padding:30px 16px;color:var(--tx2);font-size:14px}.empty svg{margin:0 auto 10px;opacity:.6}
+
+/* ===== Alert (modal) ===== */
+.modal{background:rgba(44,44,46,.94);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border-radius:16px;width:100%;max-width:300px;max-height:78dvh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6);transform:scale(1.12);opacity:0;transition:transform .45s var(--spring),opacity .25s}
+#mscrim.on .modal{transform:none;opacity:1}
+.mh{padding:20px 20px 4px;text-align:center}.mh h3{font:600 17px/1.25 var(--f);letter-spacing:-.02em;overflow-wrap:anywhere}
+#mX{display:none}
+.mb{padding:4px 20px 18px;overflow-y:auto;font-size:13.5px;color:var(--tx2);white-space:pre-wrap;text-align:center}
+.ma{display:flex;border-top:.5px solid var(--sep)}
+.ma .btn{flex:1;background:none;border-radius:0;height:46px;padding:0;font-weight:400;font-size:17px;color:var(--green)}
+.ma .btn+.btn{border-left:.5px solid var(--sep)}
+.ma .btn:hover,.ma .btn:active{background:rgba(255,255,255,.07)}
+.ma .btn.primary{font-weight:600;background:none}.ma .btn.danger{color:var(--red);font-weight:600}
+@media(max-height:500px) and (orientation:landscape){.welcome{padding-top:6px}.welcome .mark{display:none}}
+.eyebrow{font:600 12.5px var(--f);letter-spacing:.09em;text-transform:uppercase;color:var(--green);margin:-6px 0 8px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mark.img,.logo.img{background:var(--bg1);padding:14px;box-shadow:inset 0 0 0 .5px var(--sep),0 18px 50px rgba(0,0,0,.5)}
+.mark img,.logo img{width:100%;height:100%;object-fit:contain}
+.av.img{background:var(--bg2);padding:4px}.av img{width:100%;height:100%;object-fit:contain}
+.mailhr{margin-top:10px;display:inline-flex;gap:7px;align-items:center;padding:8px 14px;border-radius:99px;background:var(--red);color:#000;font:600 14px var(--f)}
+.pb .grp{background:var(--bg2)}.grp.pad{padding:14px}
+.logo-row{display:flex;gap:14px;align-items:center}
+.lp{width:68px;height:68px;border-radius:16px;background:var(--bg);display:grid;place-items:center;color:var(--tx2);overflow:hidden;flex-shrink:0}
+.lp img{width:100%;height:100%;object-fit:contain;padding:8px}
+.lbtns{flex:1;display:grid;gap:8px;min-width:0}.lbtns .btn{padding:10px 14px;font-size:15px;background:var(--bg3)}
+.ma.col{flex-direction:column}.ma.col .btn+.btn{border-left:0;border-top:.5px solid var(--sep)}
+</style>
+</head>
+<body>
+<div id="boot" role="status" aria-label="Loading HR Assistant"><div class="logo">HR</div><h2 id="bootName">HR Assistant</h2><div class="bar" aria-hidden="true"></div></div>
+
+<header class="top">
+  <div class="wrap bar3">
+    <div class="hl">
+      <button class="ib press" id="newBtn" title="New chat" aria-label="New chat" data-ic="edit" data-s="22"></button>
+      <button class="ib press" id="mailBtn" title="Email HR" aria-label="Email HR" data-ic="mail" data-s="22"></button>
+    </div>
+    <div class="ttl"><h1><img id="hLogo" alt="" hidden><span id="hName">HR Assistant</span></h1><div class="status"><span class="dot" id="dot"></span><span id="stx">Ready</span></div></div>
+    <div class="hr2"><button class="ib press" id="menuBtn" title="Settings" aria-label="Open settings" data-ic="sliders" data-s="22"></button></div>
+  </div>
+</header>
+
+<main id="chat" role="log" aria-live="polite"><div class="wrap" id="feed"></div></main>
+
+<footer class="comp">
+  <div class="wrap"><div class="cb">
+    <textarea id="in" rows="1" placeholder="Ask about leave, attendance, rules…" autocomplete="off" enterkeyhint="send" aria-label="Message"></textarea>
+    <button id="go" class="press" aria-label="Send message" data-ic="send" data-s="20"></button>
+  </div></div>
+</footer>
+
+<div id="scrim"></div>
+<aside id="panel" role="dialog" aria-label="Settings" aria-hidden="true">
+  <div class="ph"><span></span><h2>Settings</h2><button class="done press" id="closeBtn">Done</button></div>
+  <nav class="tabs" data-i="0" role="tablist">
+    <button class="tab on" data-tab="docs" role="tab">Documents</button>
+    <button class="tab" data-tab="org" role="tab">Company</button>
+    <button class="tab" data-tab="ai" role="tab">AI</button>
+    <button class="tab" data-tab="about" role="tab">About</button>
+  </nav>
+  <div class="pb">
+    <div id="pinGate" class="pin" hidden>
+      <span data-ic="lock" data-s="26"></span>
+      <h3 id="pgT">HR access</h3><p id="pgS">Enter the HR PIN to manage uploaded documents.</p>
+      <div class="fld"><input type="password" id="pinIn" placeholder="••••" inputmode="numeric" maxlength="12" aria-label="HR PIN" autocomplete="off"></div>
+      <button class="btn primary press" id="pinBtn">Unlock</button>
+      <div class="pe" id="pinErr" role="alert"></div>
+    </div>
+    <section data-panel="docs">
+      <div id="hrDocs" hidden>
+        <div class="sec">
+          <div class="st">Upload policy files</div>
+          <div class="dz" id="dz" tabindex="0" role="button" aria-label="Upload files">
+            <span data-ic="upload" data-s="30"></span><b>Tap to upload</b><span>PDF or Word (.docx) · multiple files OK</span>
+          </div>
+          <input type="file" id="file" accept=".pdf,.docx" multiple hidden>
+          <div id="ups"></div>
+        </div>
+        <div class="sec">
+          <div class="st">Loaded documents</div>
+          <div id="docs"></div>
+          <button class="btn danger press" id="wipe" style="margin-top:12px">Remove All Documents</button>
+        </div>
+      </div>
+    </section>
+    <section data-panel="org" hidden>
+      <div id="hrOrg" hidden>
+        <div class="sec">
+          <div class="st">Logo</div>
+          <div class="grp pad"><div class="logo-row">
+            <div class="lp" id="logoPrev"></div>
+            <div class="lbtns"><button class="btn press" id="logoBtn">Upload Logo</button><button class="btn danger press" id="logoRm" hidden>Remove Logo</button></div>
+          </div></div>
+          <input type="file" id="logoFile" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden>
+          <div class="pe" id="logoErr" role="alert"></div>
+          <p class="hint">PNG, JPG, WebP or SVG. It is resized automatically and stored on this device.</p>
+        </div>
+        <div class="sec">
+          <div class="st">Details</div>
+          <div class="fld"><label for="orgName">Organization name</label><input id="orgName" maxlength="60" placeholder="e.g. Acme Corp" autocomplete="organization"></div>
+          <div class="fld"><label for="hrMail">HR email</label><input id="hrMail" type="email" inputmode="email" placeholder="hr@company.com" autocomplete="off"></div>
+          <button class="btn primary press" id="saveOrg">Save Details</button>
+          <div class="pe" id="orgErr" role="alert"></div>
+          <p class="hint">The name and logo appear in the header, welcome screen and chat. Employees use the mail button to write to this address.</p>
+        </div>
+      </div>
+    </section>
+    <section data-panel="ai" hidden>
+      <div class="st">Answer engine (optional)</div>
+      <p class="hint" style="margin:0 4px 16px">Without a key, answers are extracted directly from your policy files. With an OpenAI-compatible key, the matching passage is rewritten into a tighter bullet list.</p>
+      <div class="fld"><label for="kIn">API Key</label><input type="password" id="kIn" placeholder="sk-… (leave blank to skip)" autocomplete="off"></div>
+      <div class="fld"><label for="uIn">API URL</label><input type="text" id="uIn" placeholder="https://api.openai.com/v1/chat/completions" autocomplete="off"></div>
+      <div class="fld"><label for="mIn">Model</label><input type="text" id="mIn" placeholder="gpt-4o-mini" autocomplete="off"></div>
+      <div style="display:flex;gap:8px"><button class="btn primary press" id="saveApi">Save</button><button class="btn danger press" id="clrApi" style="width:auto">Remove</button></div>
+      <p class="hint">The key is stored only in this browser. Remove it before sharing the device.</p>
+    </section>
+    <section data-panel="about" hidden>
+      <div class="sec"><div class="st">How it works</div><p class="hint" style="margin:0 4px">HR uploads company policy documents; everything stays on this device. Each question is matched to the best passages, and only the relevant sentences are shown as bullets. If nothing matches closely enough, it declines instead of guessing.</p></div>
+      <div class="sec"><div class="st">Privacy</div><p class="hint" style="margin:0 4px">Documents, chat history, branding and settings live in this browser only. The HR PIN is stored as a hash and only gates the settings screens on this device. If an AI key is added, just the matching passages and your question are sent to that API.</p></div>
+      <div class="sec"><div class="st">Version</div><p class="hint" style="margin:0 4px">HR Assistant · v6.0 · Single-file build</p></div>
+    </section>
+  </div>
+</aside>
+
+<div id="mscrim"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mT">
+  <div class="mh"><h3 id="mT">Title</h3><button id="mX" aria-label="Close"></button></div>
+  <div class="mb" id="mB"></div><div class="ma" id="mA"></div>
+</div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+<script>
+/* ================= HR ASSISTANT v4.0 ================= */
+if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+/* ---------- Icons ---------- */
+const I = {
+  send:'<path d="M12 19V5M5 12l7-7 7 7"/>',
+  edit:'<path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.4 2.6a2 2 0 0 1 3 3L12 15l-4 1 1-4Z"/>',
+  menu:'<path d="M3 6h18M3 12h18M3 18h18"/>', x:'<path d="M18 6 6 18M6 6l12 12"/>',
+  lock:'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5M12 3v12"/>',
+  file:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>',
+  eye:'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+  trash:'<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  copy:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  warn:'<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>',
+  mail:'<rect x="2" y="4" width="20" height="16" rx="3"/><path d="m22 7-10 6L2 7"/>',image:'<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/>',chev:'<path d="m9 18 6-6-6-6"/>',check:'<path d="M20 6 9 17l-5-5"/>',sliders:'<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>'
+};
+const ic = (n, s = 18) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]}</svg>`;
+const $ = id => document.getElementById(id);
+document.querySelectorAll('[data-ic]').forEach(e => e.insertAdjacentHTML('afterbegin', ic(e.dataset.ic, +e.dataset.s || 18)));
+
+/* ---------- State (persisted) ---------- */
+const KEY = 'hr_assistant_state_v3';   // same key as v3 → existing data carries over
+const REFUSAL = "This doesn't appear to be covered by any of the uploaded HR documents.";
+const DEF = { docs: [], hrPin: null, orgName: '', orgLogo: '', hrMail: '', apiKey: '', apiUrl: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini', history: [] };
+let unlocked = false;
+const state = (() => { try { return { ...DEF, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { return { ...DEF }; } })();
+function save() {
+  try {
+    const out = { ...state, history: state.history.slice(-80).map(h => ({ ...h, sourceText: h.sourceText ? h.sourceText.slice(0, 900) : undefined })) };
+    const s = JSON.stringify(out);
+    if (s.length > 4 * 1024 * 1024) { toast('Storage limit reached. Remove some documents.', 'error'); return false; }
+    localStorage.setItem(KEY, s); return true;
+  } catch (e) { toast('Could not save: ' + e.message, 'error'); return false; }
+}
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/* ---------- Toast & modal ---------- */
+function toast(msg, type) {   // no popup container: only errors, shown in the header status line
+  if (type !== 'error') return;
+  const s = $('stx'); s.textContent = msg; s.style.color = 'var(--red)';
+  clearTimeout(toast.t); toast.t = setTimeout(() => { s.style.color = ''; refreshHeader(); }, 3200);
+}
+let modalDone = null;
+function closeModal() { $('mscrim').classList.remove('on'); if (modalDone) { const d = modalDone; modalDone = null; d(false); } }
+function openModal(title, body, acts = [{ label: 'Close' }], stack = false) {
+  $('mT').textContent = title; $('mB').textContent = body; $('mB').style.textAlign = body.length > 140 ? 'left' : 'center'; $('mA').innerHTML = ''; $('mA').className = 'ma' + (stack ? ' col' : '');
+  acts.forEach(a => {
+    const b = document.createElement('button'); b.className = 'btn press ' + (a.v || ''); b.textContent = a.label;
+    b.onclick = () => { modalDone = null; $('mscrim').classList.remove('on'); a.fn && a.fn(); }; $('mA').appendChild(b);
+  });
+  $('mscrim').classList.add('on');
+}
+const confirmModal = (t, b, danger) => new Promise(res => { modalDone = res; openModal(t, b, [{ label: 'Cancel', fn: () => res(false) }, { label: danger ? 'Remove' : 'Confirm', v: danger ? 'danger' : 'primary', fn: () => res(true) }]); });
+$('mX').onclick = closeModal;
+$('mscrim').addEventListener('click', e => { if (e.target.id === 'mscrim') closeModal(); });
+
+/* ---------- Panel & tabs ---------- */
+function setPanel(on) {
+  $('panel').inert = !on; $('panel').classList.toggle('on', on); $('scrim').classList.toggle('on', on); $('panel').setAttribute('aria-hidden', !on);
+  if (on) setTimeout(() => $('closeBtn').focus({ preventScroll: true }), 60); else $('menuBtn').focus({ preventScroll: true });
+}
+$('menuBtn').onclick = () => setPanel(true); $('closeBtn').onclick = () => setPanel(false); $('scrim').onclick = () => setPanel(false);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { if ($('mscrim').classList.contains('on')) closeModal(); else setPanel(false); } });
+function switchTab(name) {
+  const t = document.querySelector(`.tab[data-tab="${name}"]`), nav = t.parentElement;
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
+  nav.dataset.i = [...nav.children].indexOf(t);
+  document.querySelectorAll('[data-panel]').forEach(p => p.hidden = p.dataset.panel !== name);
+  refreshGate();
+}
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => switchTab(t.dataset.tab));
+
+/* ---------- Sheet: drag-to-dismiss (mobile), 1:1 tracking + velocity ---------- */
+(() => {
+  const p = $('panel'), h = p.querySelector('.ph'); let y0 = 0, dy = 0, t0 = 0, on = false;
+  h.addEventListener('pointerdown', e => { if (!matchMedia('(max-width:699px)').matches || e.target.closest('button')) return; on = true; y0 = e.clientY; t0 = e.timeStamp; dy = 0; h.setPointerCapture(e.pointerId); p.style.transition = 'none'; });
+  h.addEventListener('pointermove', e => { if (!on) return; dy = Math.max(0, e.clientY - y0); p.style.transform = `translateY(${dy}px)`; $('scrim').style.opacity = 1 - dy / p.offsetHeight; });
+  const end = e => { if (!on) return; on = false; p.style.transition = ''; $('scrim').style.opacity = ''; p.style.transform = ''; if (dy > p.offsetHeight * .3 || dy / Math.max(1, e.timeStamp - t0) > .6) setPanel(false); };
+  h.addEventListener('pointerup', end); h.addEventListener('pointercancel', end);
+})();
+
+/* ---------- HR PIN (stored hashed; gates the Documents + Company tabs) ---------- */
+async function hashPin(p) {
+  try { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('hr-assistant:' + p)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+  catch { return 'plain:' + p; }
+}
+function refreshGate() {
+  const hrTab = ['docs', 'org'].includes(document.querySelector('.tab.on')?.dataset.tab), locked = !(state.hrPin && unlocked);
+  $('pinGate').hidden = !(locked && hrTab); $('hrDocs').hidden = locked; $('hrOrg').hidden = locked;
+  if (!state.hrPin) { $('pgT').textContent = 'Set HR PIN'; $('pgS').textContent = 'No PIN yet. Choose one (4+ characters) to become HR on this device — only the PIN holder can manage documents and company details.'; $('pinBtn').textContent = 'Set PIN'; }
+  else { $('pgT').textContent = 'HR access'; $('pgS').textContent = 'Enter the HR PIN to manage documents and company details.'; $('pinBtn').textContent = 'Unlock'; }
+  if (!locked) { refreshDocs(); loadOrgForm(); }
+  $('pinErr').textContent = '';
+}
+$('pinBtn').onclick = async () => {
+  const p = $('pinIn').value.trim(), err = m => $('pinErr').textContent = m;
+  if (!p) return err('Enter a PIN.');
+  if (!state.hrPin) {
+    if (p.length < 4) return err('Use at least 4 characters.');
+    state.hrPin = await hashPin(p); unlocked = true; save(); $('pinIn').value = ''; refreshGate(); return;
+  }
+  const h = await hashPin(p);
+  if (h === state.hrPin || p === state.hrPin) {            // second check migrates a legacy plain-text PIN
+    if (p === state.hrPin) { state.hrPin = h; save(); }
+    unlocked = true; $('pinIn').value = ''; refreshGate();
+  } else err('Incorrect PIN.');
+};
+$('pinIn').addEventListener('keydown', e => e.key === 'Enter' && $('pinBtn').click());
+
+/* ---------- Header + doc list ---------- */
+function refreshHeader() {
+  const n = state.docs.length; $('dot').classList.toggle('empty', !n);
+  $('stx').textContent = n ? `${n} document${n === 1 ? '' : 's'} loaded` : 'No documents loaded';
+}
+const extOf = n => (n.match(/\.([a-z0-9]+)$/i) || [, 'doc'])[1].slice(0, 3);
+function refreshDocs() {
+  const box = $('docs'); box.innerHTML = ''; $('wipe').hidden = !state.docs.length;
+  if (!state.docs.length) { box.innerHTML = `<div class="empty">${ic('file', 38)}<div>No documents yet.<br>Upload a PDF or Word file above.</div></div>`; return; }
+  state.docs.forEach(d => {
+    const el = document.createElement('div'); el.className = 'doc';
+    el.innerHTML = `<div class="di">${esc(extOf(d.name))}</div><div class="db"><div class="dn" title="${esc(d.name)}">${esc(d.name)}</div><div class="dm">${d.chunks.length} passages · ${new Date(d.uploadedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</div></div>
+      <button class="ib press" aria-label="Preview">${ic('eye', 16)}</button><button class="ib del press" aria-label="Delete">${ic('trash', 16)}</button>`;
+    const [pv, dl] = el.querySelectorAll('button');
+    pv.onclick = () => { const t = d.chunks.map((c, i) => `— Passage ${i + 1} —\n${c}`).join('\n\n'); openModal(d.name, t.slice(0, 5000) + (t.length > 5000 ? '\n\n… (truncated)' : '')); };
+    dl.onclick = async () => {
+      if (!await confirmModal('Remove document?', `"${d.name}" will be removed from this device.`, true)) return;
+      state.docs = state.docs.filter(x => x.id !== d.id); save(); refreshDocs(); refreshHeader(); renderChat(); toast('Document removed');
+    };
+    box.appendChild(el);
+  });
+}
+$('wipe').onclick = async () => {
+  if (!await confirmModal('Remove all documents?', 'All uploaded policy files will be deleted from this device.', true)) return;
+  state.docs = []; save(); refreshDocs(); refreshHeader(); renderChat(); toast('All documents removed');
+};
+
+/* ---------- Parsing: PDF / DOCX ---------- */
+function itemsToLines(items) {
+  const map = new Map();
+  for (const it of items) {
+    if (!it.str || !it.str.trim()) continue;
+    const y = Math.round(it.transform[5]); let key = y;
+    for (const k of map.keys()) if (Math.abs(k - y) <= 2) { key = k; break; }
+    (map.get(key) || map.set(key, []).get(key)).push({ x: it.transform[4], w: it.width || 0, s: it.str });
+  }
+  return [...map.keys()].sort((a, b) => b - a).map(y => {
+    let out = '', end = null;
+    for (const t of map.get(y).sort((a, b) => a.x - b.x)) { if (end !== null && t.x - end > 2) out += ' '; out += t.s; end = t.x + t.w; }
+    return out.replace(/\s+/g, ' ').trim();
+  }).filter(Boolean);
+}
+function stripRepeated(pages) {
+  if (pages.length < 2) return (pages[0] || []).join('\n');
+  const count = new Map();
+  pages.forEach(p => new Set(p.map(l => l.trim()).filter(Boolean)).forEach(l => count.set(l, (count.get(l) || 0) + 1)));
+  const min = Math.max(2, Math.ceil(pages.length * .5)), out = [];
+  for (const lines of pages) {
+    lines.forEach((raw, i) => {
+      const l = raw.trim(), edge = i < 3 || i >= lines.length - 3;
+      if (l && !(edge && ((count.get(l) || 0) >= min || /^\d{1,3}$/.test(l)))) out.push(l);
+    }); out.push('');
+  }
+  return out.join('\n');
+}
+async function parsePDF(file) {
+  if (!window.pdfjsLib) throw new Error('PDF reader unavailable — check your internet connection');
+  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise, pages = [];
+  for (let i = 1; i <= pdf.numPages; i++) pages.push(itemsToLines((await (await pdf.getPage(i)).getTextContent()).items));
+  return stripRepeated(pages);
+}
+async function parseDOCX(f) {
+  if (!window.mammoth) throw new Error('Word reader unavailable — check your internet connection');
+  return (await mammoth.extractRawText({ arrayBuffer: await f.arrayBuffer() })).value || '';
+}
+
+/* ---------- Chunking ---------- */
+const normalize = t => t.replace(/\r\n/g, '\n').replace(/[\u2022\u25CF\u25AA\u2023\u2043\u2219\u25E6\u00B7\uF0B7\u00A7]/g, '•').replace(/[ \t]+/g, ' ').replace(/ *\n */g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+function chunkText(raw, max = 1200, overlap = 200) {
+  const blocks = normalize(raw).split(/\n\s*\n/).map(b => b.trim()).filter(Boolean), chunks = []; let cur = '';
+  for (const b of blocks) {
+    if (b.length > max * 1.5) {
+      if (cur) { chunks.push(cur.trim()); cur = ''; }
+      let sub = '';
+      for (const l of b.split('\n').map(x => x.trim()).filter(Boolean)) {
+        if (sub.length + l.length + 1 > max && sub) { chunks.push(sub.trim()); sub = sub.slice(-overlap) + '\n' + l; } else sub += (sub ? '\n' : '') + l;
+      }
+      if (sub.trim()) chunks.push(sub.trim()); continue;
+    }
+    if (cur.length + b.length + 2 > max && cur) { chunks.push(cur.trim()); cur = cur.slice(-overlap) + '\n\n' + b; } else cur += (cur ? '\n\n' : '') + b;
+  }
+  if (cur.trim()) chunks.push(cur.trim());
+  return chunks.filter(c => c.length > 30);
+}
+
+/* ---------- Upload ---------- */
+const fileIn = $('file'), dz = $('dz');
+dz.onclick = () => fileIn.click();
+dz.addEventListener('keydown', e => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), fileIn.click()));
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag'); if (e.dataTransfer.files.length) handleFiles([...e.dataTransfer.files]); });
+fileIn.onchange = () => { if (fileIn.files.length) handleFiles([...fileIn.files]); fileIn.value = ''; };
+async function handleFiles(files) {
+  for (const file of files) {
+    const el = document.createElement('div'); el.className = 'up'; el.innerHTML = `<div class="n">${esc(file.name)}</div><div class="s">Parsing…</div>`; $('ups').appendChild(el);
+    const st = el.querySelector('.s');
+    try {
+      const lower = file.name.toLowerCase(); let text;
+      if (lower.endsWith('.pdf')) text = await parsePDF(file);
+      else if (lower.endsWith('.docx')) text = await parseDOCX(file);
+      else if (lower.endsWith('.doc')) throw new Error('Legacy .doc is not supported — save it as .docx');
+      else throw new Error('Unsupported file type');
+      if (!text.trim()) throw new Error('No extractable text (scanned PDF? needs OCR)');
+      st.textContent = 'Chunking…';
+      const chunks = chunkText(text); if (!chunks.length) throw new Error('Too short to use');
+      state.docs = state.docs.filter(d => d.name !== file.name);   // re-uploading replaces the old copy
+      state.docs.push({ id: 'doc_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8), name: file.name, chunks, uploadedAt: Date.now(), size: file.size });
+      save(); el.classList.add('done'); st.textContent = `✓ ${chunks.length} passages added`; toast(`${file.name} added`, 'success');
+    } catch (err) { el.classList.add('error'); st.textContent = '✗ ' + err.message; toast('Upload failed: ' + err.message, 'error'); }
+  }
+  refreshDocs(); refreshHeader(); renderChat();
+  setTimeout(() => $('ups').querySelectorAll('.done').forEach(e => { e.style.transition = 'opacity .4s'; e.style.opacity = 0; setTimeout(() => e.remove(), 400); }), 2500);
+}
+
+/* ---------- Greetings (bypass retrieval) ---------- */
+function detectGreeting(text) {
+  const t = text.toLowerCase().replace(/-/g, '').replace(/[^a-z\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!t || t.length > 120) return null;
+  if (/^(hi+|hey+|hello+|helo|hola|yo|sup|howdy|greetings?|salam+|salaam+|assalam[\sou]*alaikum|asalam[\sou]*alaikum|salam[\sou]*alaikum|aoa|walaikum\s*(assalam|salam)|good\s*(morning|afternoon|evening|day|night))(\s*(there|hr|assistant|bot|team|sir|madam|all|everyone|folks|friend))?$/.test(t))
+    return "Hello! 👋 I'm your HR Assistant. Ask me anything about company policies — leave, attendance, working hours, dress code, benefits, and more. I answer only from the HR documents uploaded on this device.";
+  if (/^(how\s*(are|r)\s*(you|u)(\s*(doing|today|now|these\s*days|bro|sir|madam))?|how('?s| is)\s*(it\s*going|everything|things|life)|how\s*do\s*you\s*do|kya\s*haal(\s*\w*)?|kia\s*hal(\s*\w*)?)$/.test(t))
+    return "I'm here and ready to help! 🙂 What would you like to know about company policies?";
+  if (/^(thanks?|thank\s*you|thanku|thnx|thx|ty|shukriya|shukria|jazak\s*allah|jazakallah|many\s*thanks)(\s*(so\s*much|a\s*lot|very\s*much|bro|sir|madam|dear))?$/.test(t))
+    return "You're welcome! 😊 Let me know if there's anything else you'd like to ask about HR policies.";
+  if (/^(bye+|goodbye|good\s*bye|see\s*(you|ya)|take\s*care|khuda\s*hafiz|allah\s*hafiz)(\s*(soon|later|bro|sir|madam))?$/.test(t))
+    return "Goodbye! 👋 Come back anytime you have a question about HR policies.";
+  if (/^(ok|okay|k|cool|got\s*it|noted|alright|all\s*right|fine|great|nice|good|perfect|sure|yep|yeah|yes|no|nope|hmm+|huh|ah|oh|i\s*see)(\s*(thanks?|thank\s*you))?$/.test(t))
+    return "👍 Got it. If you have a question about company policies, just ask.";
+  if (/^(who\s*are\s*you|what\s*are\s*you|what\s*can\s*you\s*do|what\s*do\s*you\s*do|how\s*(can|do)\s*(you|i)\s*(help|use)|help|help\s*me|what\s*is\s*this|what'?s\s*this|what\s*is\s*hr\s*assistant|what\s*is\s*hr\s*assistant\s*for)$/.test(t))
+    return "I'm your HR Assistant. I answer questions about company policies — annual leave, sick leave, attendance, working hours, dress code, benefits and other HR rules — using only the documents HR has uploaded on this device.\n\nTry asking:\n• \"What is the annual leave policy?\"\n• \"How does sick leave work?\"\n• \"What are the working hours?\"\n\nIf the answer isn't in the documents, I'll say so rather than guess.";
+  return null;
+}
+const stripGreeting = t => { const s = t.replace(/^\s*(hi+|hey+|hello+|helo|salam+|salaam+|assalam[\sou]*alaikum|asalam[\sou]*alaikum|aoa|good\s*(morning|afternoon|evening))[\s,!.]+/i, '').trim(); return s.length >= 5 && s !== t ? s : t; };
+
+/* ---------- Retrieval ---------- */
+const STOP = new Set('the a an is are was were be been being to of in on at by for with about as into through during before after above below from up down and or but if then else when where what which who whom why how this that these those it its i you he she we they them my your his her our their am has have had do does did will would should could can may might must shall so than too very just not no nor only own same such more most some any all each every both few other another also me us him yes ok okay please thanks thank dear hello hi hey tell give know want need like get got'.split(' '));
+const tokenize = t => t.toLowerCase().match(/[\p{L}\p{N}]+/gu) || [];
+function wordsMatch(a, b) {
+  if (a === b) return true;
+  const m = Math.min(a.length, b.length); if (m < 4) return false;
+  let c = 0; while (c < a.length && c < b.length && a[c] === b[c]) c++;
+  return c >= 4 && c >= m * .6;
+}
+const hitCount = (text, qTerms) => {
+  const set = new Set(tokenize(text).filter(t => t.length > 1)); let h = 0;
+  for (const q of qTerms) { if (set.has(q)) { h++; continue; } for (const c of set) if (wordsMatch(q, c)) { h++; break; } }
+  return h;
+};
+function retrieve(query, topK = 3) {
+  const qTerms = [...new Set(tokenize(query).filter(t => t.length > 1 && !STOP.has(t)))];
+  if (!qTerms.length) return { results: [], qTerms };
+  const all = state.docs.flatMap(d => d.chunks.map(text => ({ text, docName: d.name })));
+  const scored = all.map(c => { const hits = hitCount(c.text, qTerms); return { c, hits, cov: hits / qTerms.length }; }).sort((a, b) => b.cov - a.cov || b.hits - a.hits);
+  return { results: scored.filter(s => s.cov >= .3).slice(0, topK).map(s => s.c), qTerms };
+}
+
+/* ---------- Answer extraction ---------- */
+const isHeading = l => { const t = l.trim(); return !!t && ((/^\d+(\.\d+)*\.?\s+\S/.test(t) && t.length < 80) || /^section\s/i.test(t) || /^[A-Z][A-Z0-9\s&#'.,\/\-()]{4,70}$/.test(t)); };
+function splitUnits(text) {
+  const units = [];
+  for (const line of text.split('\n')) {
+    const t = line.trim(); if (!t || isHeading(t)) continue;
+    if (t.startsWith('•')) { const b = t.replace(/^•\s*/, '').trim(); if (b.length > 8) units.push({ text: b }); continue; }
+    for (const s of t.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g) || [t]) { const u = s.trim().replace(/^[-–—]\s*/, ''); if (u.length > 15) units.push({ text: u }); }
+  }
+  return units;
+}
+const titleCase = s => (s.replace(/[^A-Za-z]/g, '') === s.replace(/[^A-Za-z]/g, '').toUpperCase() ? s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) : s);
+function deriveTitle(qTerms, text) {
+  for (const line of text.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 8)) {
+    const m = line.match(/^\d+(?:\.\d+)*\.?\s+(.+)$/);
+    if (m && m[1].length > 2 && m[1].length <= 60 && /^[A-Z]/.test(m[1])) return titleCase(m[1].trim());
+  }
+  const skip = new Set(['policy', 'policies', 'rule', 'rules', 'regulation', 'regulations', 'company', 'employee', 'employees', 'department']);
+  let use = qTerms.filter(t => !skip.has(t) && t.length > 2); if (!use.length) use = qTerms.slice(0, 3);
+  return use.slice(0, 3).map(w => w[0].toUpperCase() + w.slice(1)).join(' ');
+}
+function extractAnswer(results, qTerms) {
+  const top = results[0], units = splitUnits(top.text).map((u, pos) => ({ ...u, pos, score: hitCount(u.text, qTerms) }));
+  let chosen = units.filter(u => u.score > 0).slice(0, 6);
+  if (!chosen.length) chosen = units.slice(0, 5);
+  else if (chosen.length < 3) { const have = new Set(chosen.map(u => u.pos)); chosen = [...units.filter(u => !have.has(u.pos)).slice(0, 3 - chosen.length), ...chosen]; }
+  chosen = chosen.sort((a, b) => a.pos - b.pos).slice(0, 6);
+  return { units: chosen, title: deriveTitle(qTerms, top.text) };
+}
+function highlight(text, qTerms) {
+  const safe = esc(text), terms = [...new Set(qTerms)].filter(t => t.length > 1).sort((a, b) => b.length - a.length);
+  if (!terms.length) return safe;
+  try { return safe.replace(new RegExp(`\\b(${terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`, 'gi'), '<mark>$1</mark>'); } catch { return safe; }
+}
+
+/* ---------- Optional LLM rewrite ---------- */
+async function callLLM(query, context) {
+  const system = `You are an HR Assistant. Answer using ONLY the CONTEXT below.\n\nOutput format (exactly):\nTITLE: <2-5 word title>\n- <bullet point 1>\n- <bullet point 2>\n\nRules:\n1. Every bullet must be a single concise statement directly supported by the context.\n2. Prefer 2-6 bullets. Do not include addresses, phone numbers, page numbers, or boilerplate.\n3. Do not use outside knowledge. Do not guess. Do not invent policies or numbers.\n4. If the answer is not clearly stated in the context, respond with exactly: NOT_FOUND\n\nCONTEXT:\n${context}`;
+  const r = await fetch(state.apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + state.apiKey }, body: JSON.stringify({ model: state.model, temperature: 0, messages: [{ role: 'system', content: system }, { role: 'user', content: query }] }) });
+  if (!r.ok) { let d = ''; try { d = (await r.json()).error?.message || ''; } catch { } throw new Error(`API ${r.status}${d ? ': ' + d : ''}`); }
+  return (await r.json()).choices?.[0]?.message?.content?.trim() || null;
+}
+function parseLLM(raw) {
+  if (!raw || (/NOT_FOUND/i.test(raw) && raw.trim().length < 60)) return null;
+  let title = ''; const bullets = [];
+  for (const line of raw.split('\n').map(l => l.trim()).filter(Boolean)) {
+    const tm = line.match(/^TITLE:\s*(.+)$/i); if (tm) { title = tm[1].trim(); continue; }
+    const bm = line.match(/^[-•*]\s+(.+)$/); if (bm) { bullets.push(bm[1].trim()); continue; }
+    if (!title && !bullets.length) title = line; else if (bullets.length) bullets[bullets.length - 1] += ' ' + line;
+  }
+  return bullets.length ? { title, bullets } : null;
+}
+async function buildAnswer(query) {
+  const { results, qTerms } = retrieve(query);
+  if (!results.length) return { refusal: true };
+  const ex = extractAnswer(results, qTerms); if (!ex.units.length) return { refusal: true };
+  const base = { title: ex.title, bullets: ex.units.map(u => u.text), sourceName: results[0].docName, sourceText: results[0].text, qTerms };
+  if (state.apiKey) {
+    try {
+      const raw = await callLLM(query, results.map((r, i) => `[Passage ${i + 1} — ${r.docName}]\n${r.text}`).join('\n\n---\n\n'));
+      const p = parseLLM(raw);
+      if (p) return { ...base, title: p.title || base.title, bullets: p.bullets };
+      if (raw && /NOT_FOUND/i.test(raw)) return { refusal: true };
+    } catch (e) { console.warn('LLM failed, using extracted answer:', e); }
+  }
+  return base;
+}
+
+/* ---------- Rendering ---------- */
+function messageEl(m) {
+  const el = document.createElement('article');
+  if (m.role === 'user') { el.className = 'msg user'; el.innerHTML = `<div class="bub">${esc(m.text)}</div>`; return el; }
+  if (m.isRefusal) {
+    el.className = 'msg bot refuse';
+    queueMicrotask(() => el.querySelector('.mailhr')?.addEventListener('click', () => $('mailBtn').click()));
+    el.innerHTML = `${avHTML()}<div class="bub"><div class="rh">${ic('warn', 14)}Not found</div><div>${esc(m.text)}</div><div class="rt">Try rephrasing, or contact HR for policies not yet covered.</div>${MAIL_OK.test(state.hrMail || '') ? `<button class="mailhr press">${ic('mail', 15)}Email HR about this</button>` : ''}</div>`; return el;
+  }
+  el.className = 'msg bot';
+  if (!m.bullets) { el.innerHTML = `${avHTML()}<div class="bub plain">${esc(m.text || '')}</div>`; return el; }
+  const title = m.title || 'Answer', q = m.qTerms || [];
+  el.innerHTML = `${avHTML()}<div class="bub"><div class="card">
+    <div class="ch"><div class="ct">${esc(title)}</div><button class="cp press" aria-label="Copy answer">${ic('copy', 15)}</button></div>
+    <ul class="al">${m.bullets.map(b => `<li>${highlight(b, q)}</li>`).join('')}</ul>
+    ${m.sourceName ? `<details class="src"><summary>Source · ${esc(m.sourceName)}</summary><div class="sb">${esc(m.sourceText || '')}</div></details>` : ''}
+  </div></div>`;
+  el.querySelector('.cp').onclick = async () => {
+    try { await navigator.clipboard.writeText(title + '\n\n' + m.bullets.map(b => '• ' + b).join('\n')); const b = el.querySelector('.cp'); b.innerHTML = ic('check', 16); setTimeout(() => b.innerHTML = ic('copy', 15), 1400); } catch { toast('Copy failed', 'error'); }
+  };
+  return el;
+}
+const feed = $('feed'), input = $('in'), goBtn = $('go');
+const scrollDown = () => requestAnimationFrame(() => { $('chat').scrollTop = $('chat').scrollHeight; });
+const TOPICS = ['annual leave', 'sick leave', 'maternity leave', 'paternity leave', 'unpaid leave', 'working hours', 'attendance', 'overtime', 'holiday', 'public holiday', 'dress code', 'probation', 'resignation', 'notice period', 'salary', 'payroll', 'benefits', 'insurance', 'medical', 'remote work', 'work from home', 'travel', 'expenses', 'performance review', 'training', 'code of conduct', 'disciplinary'];
+function suggestions() {
+  if (!state.docs.length) return [];
+  const all = state.docs.flatMap(d => d.chunks).join(' ').toLowerCase(), found = TOPICS.filter(t => all.includes(t)).slice(0, 3);
+  for (const t of TOPICS) { if (found.length >= 3) break; if (!found.includes(t)) found.push(t); }
+  return found.map(t => `What is the ${t} policy?`);
+}
+function renderWelcome() {
+  const n = state.docs.length, chunks = state.docs.reduce((a, d) => a + d.chunks.length, 0), el = document.createElement('section');
+  el.className = 'welcome';
+  el.innerHTML = n
+    ? `${markHTML()}${eyebrow()}<h2>Hi, I'm HR Assistant</h2><p>Ask about company policies, leave, attendance or rules. I only answer from the documents uploaded on this device.</p><div class="chip"><b>${chunks}</b> passages from <b>${n}</b> document${n === 1 ? '' : 's'}</div>`
+    : `${markHTML()}${eyebrow()}<h2>Welcome</h2><p>I answer questions about company policies, strictly from the HR documents uploaded on this device.</p><div class="chip warn">No documents loaded yet</div><p style="margin-top:16px;font-size:13px;color:var(--mu)">Ask HR to upload the company handbook from the menu.</p>`;
+  const s = suggestions();
+  if (s.length) {
+    const w = document.createElement('div'); w.className = 'sug'; w.innerHTML = '<small>Try asking</small><div class="grp"></div>';
+    s.forEach(q => { const b = document.createElement('button'); b.className = 'sg press'; b.innerHTML = `<span>${esc(q)}</span>${ic('chev', 15)}`; b.onclick = () => { input.value = q; send(); }; w.lastChild.appendChild(b); });
+    el.appendChild(w);
+  }
+  feed.appendChild(el);
+}
+function renderChat() { feed.innerHTML = ''; if (!state.history.length) return renderWelcome(); state.history.forEach(m => feed.appendChild(messageEl(m))); scrollDown(); }
+let typing = null;
+function showTyping(on) {
+  if (on && !typing) { typing = document.createElement('div'); typing.className = 'msg bot'; typing.innerHTML = `${avHTML()}<div class="tb"><i></i><i></i><i></i></div>`; feed.appendChild(typing); scrollDown(); }
+  else if (!on && typing) { typing.remove(); typing = null; }
+}
+function push(m) { state.history.push(m); feed.appendChild(messageEl(m)); scrollDown(); save(); }
+
+/* ---------- Send ---------- */
+async function send() {
+  const raw = input.value.trim(); if (!raw || goBtn.disabled) return;
+  input.value = ''; input.style.height = 'auto'; feed.querySelector('.welcome')?.remove();
+  state.history.push({ role: 'user', text: raw, ts: Date.now() }); feed.appendChild(messageEl(state.history.at(-1))); scrollDown();
+  const g = detectGreeting(raw); if (g) return push({ role: 'bot', text: g, ts: Date.now() });
+  if (!state.docs.length) return push({ role: 'bot', isRefusal: true, text: 'No HR documents have been uploaded on this device yet. Ask HR to upload the company policy files first.', ts: Date.now() });
+  goBtn.disabled = true; goBtn.classList.add('load'); showTyping(true);
+  try {
+    const a = await buildAnswer(stripGreeting(raw)); showTyping(false);
+    push(a.refusal ? { role: 'bot', isRefusal: true, text: REFUSAL, ts: Date.now() } : { role: 'bot', title: a.title, bullets: a.bullets, sourceName: a.sourceName, sourceText: a.sourceText, qTerms: a.qTerms, ts: Date.now() });
+  } catch (err) { showTyping(false); push({ role: 'bot', isRefusal: true, text: 'Something went wrong: ' + err.message, ts: Date.now() }); }
+  finally { goBtn.disabled = false; goBtn.classList.remove('load'); input.focus(); }
+}
+goBtn.onclick = send;
+input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
+input.addEventListener('input', () => { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 120) + 'px'; });
+$('newBtn').onclick = async () => {
+  if (!state.history.length) return toast('Chat is already empty');
+  if (!await confirmModal('Start a new chat?', 'The current conversation will be cleared. Documents stay loaded.')) return;
+  state.history = []; save(); renderChat(); toast('Chat cleared');
+};
+
+/* ---------- API settings ---------- */
+function loadApiForm() { $('kIn').value = state.apiKey || ''; $('uIn').value = state.apiUrl || DEF.apiUrl; $('mIn').value = state.model || DEF.model; }
+$('saveApi').onclick = () => { state.apiKey = $('kIn').value.trim(); state.apiUrl = $('uIn').value.trim() || DEF.apiUrl; state.model = $('mIn').value.trim() || DEF.model; if (save()) flashBtn($('saveApi'), 'Saved ✓'); };
+$('clrApi').onclick = () => { state.apiKey = ''; save(); loadApiForm(); toast('API key removed'); };
+
+/* ---------- Branding helpers ---------- */
+const MAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const avHTML = () => state.orgLogo ? `<div class="av img"><img src="${state.orgLogo}" alt=""></div>` : '<div class="av">HR</div>';
+const markHTML = () => state.orgLogo ? `<div class="mark img"><img src="${state.orgLogo}" alt=""></div>` : '<div class="mark">HR</div>';
+const eyebrow = () => state.orgName ? `<div class="eyebrow">${esc(state.orgName)}</div>` : '';
+function flashBtn(b, t) { const o = b.dataset.o || b.textContent; b.dataset.o = o; b.textContent = t; clearTimeout(b._t); b._t = setTimeout(() => b.textContent = o, 1500); }
+function applyBrand() {
+  const n = state.orgName || '', L = state.orgLogo || '';
+  $('hName').textContent = n || 'HR Assistant'; $('hLogo').hidden = !L; if (L) $('hLogo').src = L;
+  document.title = (n ? n + ' · ' : '') + 'HR Assistant';
+  const bl = document.querySelector('.logo'); bl.innerHTML = L ? `<img src="${L}" alt="">` : 'HR'; bl.classList.toggle('img', !!L);
+  $('bootName').textContent = n || 'HR Assistant';
+  $('logoPrev').innerHTML = L ? `<img src="${L}" alt="Logo preview">` : ic('image', 26);
+  $('logoRm').hidden = !L; $('logoBtn').textContent = L ? 'Replace Logo' : 'Upload Logo';
+}
+function loadOrgForm() { $('orgName').value = state.orgName || ''; $('hrMail').value = state.hrMail || ''; }
+$('saveOrg').onclick = () => {
+  const n = $('orgName').value.trim(), m = $('hrMail').value.trim();
+  if (m && !MAIL_OK.test(m)) { $('orgErr').textContent = 'Enter a valid email address.'; return; }
+  $('orgErr').textContent = ''; state.orgName = n; state.hrMail = m;
+  if (save()) { applyBrand(); renderChat(); flashBtn($('saveOrg'), 'Saved ✓'); }
+};
+function resizeImage(file, max) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const w0 = img.naturalWidth || max, h0 = img.naturalHeight || max, k = Math.min(1, max / Math.max(w0, h0)), w = Math.max(1, Math.round(w0 * k)), h = Math.max(1, Math.round(h0 * k)), c = document.createElement('canvas');
+      c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h); URL.revokeObjectURL(url); res(c.toDataURL('image/png'));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('bad image')); };
+    img.src = url;
+  });
+}
+$('logoBtn').onclick = () => $('logoFile').click();
+$('logoFile').onchange = async () => {
+  const f = $('logoFile').files[0]; $('logoFile').value = ''; if (!f) return;
+  const err = m => $('logoErr').textContent = m; err('');
+  if (!f.type.startsWith('image/')) return err('Choose an image file.');
+  if (f.size > 5 * 1024 * 1024) return err('That image is larger than 5 MB.');
+  try { state.orgLogo = await resizeImage(f, 256); if (save()) { applyBrand(); renderChat(); } }
+  catch { err('Could not read that image.'); }
+};
+$('logoRm').onclick = () => { state.orgLogo = ''; save(); applyBrand(); renderChat(); };
+
+/* ---------- Email HR (Gmail / Outlook / default mail app) ---------- */
+function mailDraft() {
+  const h = state.history, lastRefusal = h.at(-1)?.isRefusal && h.at(-2)?.role === 'user';
+  return { subject: 'Question for HR', body: `Hello HR team,\n\n${lastRefusal ? 'I could not find this in the policy documents: ' + h.at(-2).text + '\n\n' : ''}` };
+}
+$('mailBtn').onclick = () => {
+  if (!MAIL_OK.test(state.hrMail || '')) {
+    openModal('HR email not set', 'HR has not added a contact email yet. They can add it under Settings → Company.', unlocked
+      ? [{ label: 'Close' }, { label: 'Open Settings', v: 'primary', fn: () => { setPanel(true); switchTab('org'); } }]
+      : [{ label: 'OK', v: 'primary' }]);
+    return;
+  }
+  const { subject, body } = mailDraft(), to = encodeURIComponent(state.hrMail), su = encodeURIComponent(subject), bd = encodeURIComponent(body);
+  const open = url => url.startsWith('mailto:') ? (location.href = url) : window.open(url, '_blank', 'noopener');
+  openModal('Email HR', state.hrMail, [
+    { label: 'Gmail', fn: () => open(`https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${su}&body=${bd}`) },
+    { label: 'Outlook', fn: () => open(`https://outlook.office.com/mail/deeplink/compose?to=${to}&subject=${su}&body=${bd}`) },
+    { label: 'Mail App', fn: () => open(`mailto:${state.hrMail}?subject=${su}&body=${bd}`) },
+    { label: 'Cancel', v: 'primary' }
+  ], true);
+};
+
+/* ---------- Init ---------- */
+$('panel').inert = true; applyBrand(); loadApiForm(); refreshGate(); refreshHeader(); renderChat();
+setTimeout(() => { $('boot').classList.add('off'); setTimeout(() => $('boot').remove(), 600); }, 900);
+</script>
+</body>
+</html>

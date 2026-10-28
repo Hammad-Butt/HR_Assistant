@@ -1,0 +1,6 @@
+{
+  "name": "HR Assistant",
+  "description": "Company policy and handbook assistant with instant search, cited passages, and HR admin controls.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
